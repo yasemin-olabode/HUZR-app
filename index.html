@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Second Brain</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brain">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#EEF1F4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EEF1F4; --surface: #FFFFFF; --ink: #1E2A3A; --muted: #5E6B7A;
+    --line: #D5DCE3; --urgent: #B9770E; --calm: #2F7D78; --soft: #E3EAF0;
+    --font: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141A21; --surface: #1D252F; --ink: #E6ECF2; --muted: #9AA7B5;
+      --line: #2E3A47; --urgent: #E0A33C; --calm: #5DB3AD; --soft: #253140;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--font);
+    font-size: 17px; line-height: 1.45; -webkit-text-size-adjust: 100%;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--calm); outline-offset: 2px; }
+
+  header { padding: 18px 20px 6px; display: flex; align-items: flex-end; justify-content: space-between; }
+  .date { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+  .date small { display: block; font-size: 15px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+  .gear { background: none; border: 0; width: 44px; height: 44px; border-radius: 22px; font-size: 22px; color: var(--muted); }
+
+  nav { display: flex; gap: 6px; padding: 10px 16px 6px; overflow-x: auto; }
+  nav button {
+    flex: 0 0 auto; border: 1px solid var(--line); background: transparent; border-radius: 999px;
+    padding: 8px 14px; min-height: 40px; color: var(--muted);
+  }
+  nav button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  main { padding: 6px 16px calc(150px + env(safe-area-inset-bottom, 0px)); max-width: 640px; margin: 0 auto; }
+
+  .reply {
+    background: var(--surface); border-radius: 18px; padding: 14px 16px; margin: 8px 0 16px;
+    border-left: 5px solid var(--calm); position: relative;
+  }
+  .reply[hidden] { display: none; }
+  .reply .close { position: absolute; top: 4px; right: 4px; background: none; border: 0; width: 40px; height: 40px; color: var(--muted); font-size: 20px; }
+  .reply p { margin: 0 34px 0 0; white-space: pre-line; }
+  .reply .item { background: var(--bg); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .actions button {
+    border: 1px solid var(--line); background: var(--soft); border-radius: 12px;
+    padding: 10px 14px; min-height: 44px; text-align: left;
+  }
+
+  .note { color: var(--muted); margin: 6px 4px 14px; }
+  h2 { font-size: 15px; font-weight: 700; color: var(--muted); margin: 22px 4px 8px; letter-spacing: 0.01em; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .item {
+    background: var(--surface); border-radius: 14px; padding: 12px 14px 10px;
+    border-left: 5px solid transparent; transition: opacity .25s, transform .25s;
+  }
+  .item.immediate { border-left-color: var(--urgent); }
+  .item.scheduled { border-left-color: var(--ink); }
+  .item.project { border-left-color: var(--calm); }
+  .item.gone { opacity: 0; transform: translateX(24px); }
+  .item .what { font-size: 18px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 14px; color: var(--muted); }
+  .chip { background: var(--soft); border-radius: 6px; padding: 1px 8px; }
+  .routine { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--soft); font-size: 15px; white-space: pre-line; }
+  .btns { display: flex; gap: 6px; margin-top: 10px; }
+  .btns button {
+    flex: 1; min-height: 42px; border-radius: 10px; border: 1px solid var(--line);
+    background: transparent; font-size: 15px;
+  }
+  .btns .done { border-color: var(--calm); color: var(--calm); font-weight: 700; }
+
+  .find { display: flex; gap: 8px; margin: 8px 0; }
+  .find input { flex: 1; }
+  .links { display: flex; gap: 8px; margin: 4px 0 12px; }
+  .links button { background: none; border: 0; color: var(--calm); text-decoration: underline; padding: 8px 4px; min-height: 40px; }
+
+  input, textarea {
+    font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 14px; width: 100%;
+  }
+  .capture {
+    position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg);
+    border-top: 1px solid var(--line); padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .capture form { display: flex; gap: 8px; align-items: flex-end; max-width: 640px; margin: 0 auto; }
+  .capture textarea { resize: none; min-height: 52px; max-height: 160px; font-size: 18px; }
+  .send {
+    flex: 0 0 auto; height: 52px; padding: 0 20px; border-radius: 14px; border: 0;
+    background: var(--ink); color: var(--bg); font-weight: 700;
+  }
+  .send:disabled { opacity: .5; }
+
+  .sheet { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 40px; z-index: 5; }
+  .sheet[hidden] { display: none; }
+  .sheet h1 { font-size: 26px; margin: 0 0 6px; }
+  .sheet h3 { margin: 28px 0 6px; font-size: 17px; }
+  .sheet p { color: var(--muted); margin: 6px 0; }
+  .sheet .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .primary, .secondary { min-height: 48px; border-radius: 12px; padding: 0 18px; border: 1px solid var(--ink); }
+  .primary { background: var(--ink); color: var(--bg); font-weight: 700; }
+  .secondary { background: transparent; }
+  .sheet textarea { font-size: 13px; font-family: ui-monospace, Menlo, monospace; margin-top: 6px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; max-width: 90vw;
+    opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 6;
+  }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .item, .toast { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="date" id="date"></div>
+  <button class="gear" id="openSettings" aria-label="Settings">⚙︎</button>
+</header>
+<nav aria-label="Views">
+  <button data-view="today">Today</button>
+  <button data-view="open">All tasks</button>
+  <button data-view="projects">Projects</button>
+  <button data-view="search">Find</button>
+</nav>
+<main>
+  <section class="reply" id="reply" hidden aria-live="polite">
+    <button class="close" id="closeReply" aria-label="Dismiss">×</button>
+    <p id="replyText"></p>
+    <ul id="replyItems"></ul>
+    <div class="actions" id="replyActions"></div>
+  </section>
+  <div id="findBox" hidden>
+    <form class="find" id="findForm">
+      <input id="findInput" placeholder="A place or person, e.g. Cardiff" autocomplete="off">
+      <button class="send" type="submit">Find</button>
+    </form>
+    <div class="links">
+      <button type="button" data-view="tomorrow">Tomorrow's urgent</button>
+      <button type="button" data-view="backlog">Backlog</button>
+    </div>
+  </div>
+  <div id="list"></div>
+</main>
+<div class="capture">
+  <form id="captureForm">
+    <textarea id="captureInput" rows="1" enterkeyhint="send" placeholder="Type or dictate anything"></textarea>
+    <button class="send" id="sendBtn" type="submit">Log</button>
+  </form>
+</div>
+
+<section class="sheet" id="setup" hidden>
+  <h1>Connect</h1>
+  <p id="setupMsg">Enter the passcode you saved as APP_TOKEN in Supabase.</p>
+  <input id="passInput" type="password" autocomplete="off" placeholder="Passcode">
+  <div class="row"><button class="primary" id="savePass">Connect</button></div>
+</section>
+
+<section class="sheet" id="settings" hidden>
+  <h1>Settings</h1>
+  <h3>Notifications</h3>
+  <p>Morning, midday and evening check-ins. On iPhone this only works when the app is opened from its home-screen icon.</p>
+  <div class="row">
+    <button class="primary" id="enablePush">Turn on notifications</button>
+    <button class="secondary" id="testPush">Send a test</button>
+  </div>
+  <p id="pushMsg"></p>
+  <h3>Notification keys (one-time setup)</h3>
+  <p>Create keys once, then add both to Supabase as secrets. Never share the private key.</p>
+  <div class="row"><button class="secondary" id="makeKeys">Create keys</button></div>
+  <div id="keys" hidden>
+    <p>VAPID_PUBLIC_KEY</p><textarea id="pubKey" rows="3" readonly></textarea>
+    <p>VAPID_PRIVATE_KEY</p><textarea id="privKey" rows="2" readonly></textarea>
+  </div>
+  <h3>Passcode</h3>
+  <div class="row"><button class="secondary" id="changePass">Change passcode</button></div>
+  <div class="row" style="margin-top:32px"><button class="primary" id="closeSettings">Done</button></div>
+</section>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// ===== Paste your FUNCTION_URL between the quotes below =====
+const API = "PASTE_YOUR_FUNCTION_URL_HERE";
+// =============================================================
+
+const $ = (s) => document.querySelector(s);
+let token = "";
+try { token = localStorage.getItem("token") || ""; } catch (e) {}
+let current = new URLSearchParams(location.search).get("view") || "today";
+let lastQuery = "";
+
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+}
+
+function toast(text) {
+  const t = $("#toast");
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+async function api(body) {
+  if (!API.startsWith("https://")) throw new Error("The function address hasn't been added to index.html yet.");
+  let r;
+  try {
+    r = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-app-token": token },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new Error("Can't reach the server. Check your connection and try again.");
+  }
+  if (r.status === 401) { showSetup("That passcode didn't work. Enter it again."); throw new Error("Passcode needed."); }
+  return await r.json().catch(() => ({ text: "The server sent something unexpected. Check the function logs." }));
+}
+
+function showDate() {
+  const now = new Date();
+  const day = now.toLocaleDateString("en-GB", { weekday: "long", timeZone: "Europe/London" });
+  const rest = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "Europe/London" });
+  $("#date").replaceChildren(day, el("small", {}, rest));
+}
+
+function itemRow(it) {
+  const li = el("li", { class: `item ${it.kind === "project" ? "project" : it.tier}` });
+  li.append(el("div", { class: "what" }, it.content));
+  const meta = el("div", { class: "meta" }, el("span", {}, it.when));
+  for (const t of it.tags || []) meta.append(el("span", { class: "chip" }, t));
+  li.append(meta);
+  if (it.routine) li.append(el("div", { class: "routine" }, "Your system: " + it.routine));
+  const btns = el("div", { class: "btns" });
+  const act = (label, body, cls) => el("button", { class: cls || "", type: "button", onclick: () => itemAction(li, body) }, label);
+  if (it.kind === "project") {
+    btns.append(act("Next step", { action: "next_step", id: it.id }, "done"), act("Drop", { action: "item", op: "drop", id: it.id }));
+  } else {
+    btns.append(
+      act("Done", { action: "item", op: "done", id: it.id }, "done"),
+      act("Tomorrow", { action: "item", op: "push", id: it.id }),
+      act("Park", { action: "item", op: "park", id: it.id }),
+    );
+  }
+  li.append(btns);
+  return li;
+}
+
+async function itemAction(li, body) {
+  li.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  try {
+    const out = await api(body);
+    if (body.action === "next_step") { showReply(out); load(current); return; }
+    toast(out.text || "Updated.");
+    li.classList.add("gone");
+    setTimeout(() => li.remove(), 260);
+  } catch (e) {
+    toast(e.message);
+    li.querySelectorAll("button").forEach((b) => (b.disabled = false));
+  }
+}
+
+function renderView(out) {
+  const list = $("#list");
+  list.replaceChildren();
+  if (out.text) list.append(el("p", { class: "note" }, out.text));
+  for (const s of out.sections || []) {
+    list.append(el("h2", {}, s.title));
+    const ul = el("ul");
+    for (const it of s.items) ul.append(itemRow(it));
+    list.append(ul);
+  }
+  if (out.actions && out.actions.length) list.prepend(actionButtons(out.actions));
+}
+
+function actionButtons(actions) {
+  const box = el("div", { class: "actions" });
+  for (const a of actions) {
+    box.append(el("button", { type: "button", onclick: () => runAction(a.call) }, a.label));
+  }
+  return box;
+}
+
+async function runAction(call) {
+  try {
+    const out = await api(call);
+    if (out.view) { setView(out.view, false); renderView(out); } else { showReply(out); load(current); }
+  } catch (e) { toast(e.message); }
+}
+
+function showReply(out) {
+  $("#replyText").textContent = out.text || "";
+  const ul = $("#replyItems");
+  ul.replaceChildren();
+  for (const it of out.nudge || []) ul.append(itemRow(it));
+  ul.style.marginTop = (out.nudge || []).length ? "12px" : "0";
+  const acts = $("#replyActions");
+  acts.replaceChildren();
+  if (out.actions && out.actions.length) acts.replaceWith(Object.assign(actionButtons(out.actions), { id: "replyActions" }));
+  $("#reply").hidden = false;
+}
+
+function setView(name, fetch = true) {
+  current = name;
+  document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === name)));
+  $("#findBox").hidden = !["search", "tomorrow", "backlog"].includes(name);
+  history.replaceState(null, "", `?view=${name}`);
+  if (fetch) load(name);
+}
+
+async function load(name, q = lastQuery) {
+  if (!token) return;
+  if (name === "search" && !q) { $("#list").replaceChildren(el("p", { class: "note" }, "Find everything waiting for a place or person.")); return; }
+  try {
+    renderView(await api({ action: "view", name, q }));
+  } catch (e) {
+    $("#list").replaceChildren(el("p", { class: "note" }, e.message));
+  }
+}
+
+async function send(text) {
+  const btn = $("#sendBtn");
+  btn.disabled = true;
+  showReply({ text: "Logging…" });
+  try {
+    const out = await api({ action: "send", text, client_id: crypto.randomUUID() });
+    $("#captureInput").value = "";
+    autosize();
+    if (out.view) { $("#reply").hidden = true; setView(out.view, false); renderView(out); }
+    else { showReply(out); load(current); }
+  } catch (e) {
+    showReply({ text: e.message + " Your text is still in the box." });
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function autosize() {
+  const t = $("#captureInput");
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight, 160) + "px";
+}
+
+function showSetup(msg) {
+  if (msg) $("#setupMsg").textContent = msg;
+  $("#setup").hidden = false;
+  $("#passInput").focus();
+}
+
+function b64ToBytes(s) {
+  const pad = "=".repeat((4 - (s.length % 4)) % 4);
+  const raw = atob((s + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+async function enablePush() {
+  const msg = $("#pushMsg");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    msg.textContent = "Notifications aren't available here. On iPhone, add the app to your home screen and open it from the icon.";
+    return;
+  }
+  try {
+    const { publicKey } = await api({ action: "vapid_public" });
+    if (!publicKey) { msg.textContent = "Add the notification keys to Supabase first (see below)."; return; }
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { msg.textContent = "Notifications are blocked. Allow them in your phone's settings for this app."; return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) ||
+      (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(publicKey) }));
+    const out = await api({ action: "subscribe", subscription: sub.toJSON() });
+    msg.textContent = out.text;
+  } catch (e) {
+    msg.textContent = "Couldn't turn on notifications: " + e.message;
+  }
+}
+
+// ---- wiring ----
+document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+$("#closeReply").addEventListener("click", () => ($("#reply").hidden = true));
+$("#captureForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = $("#captureInput").value.trim();
+  if (text) send(text);
+});
+$("#captureInput").addEventListener("input", autosize);
+$("#captureInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#captureForm").requestSubmit(); }
+});
+$("#findForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  lastQuery = $("#findInput").value.trim();
+  setView("search", false);
+  load("search", lastQuery);
+});
+$("#savePass").addEventListener("click", async () => {
+  token = $("#passInput").value.trim();
+  if (!token) return;
+  try {
+    const out = await api({ action: "ping" });
+    if (out.text === "Connected.") {
+      try { localStorage.setItem("token", token); } catch (e) {}
+      $("#setup").hidden = true;
+      setView(current);
+    }
+  } catch (e) { $("#setupMsg").textContent = e.message; }
+});
+$("#openSettings").addEventListener("click", () => ($("#settings").hidden = false));
+$("#closeSettings").addEventListener("click", () => ($("#settings").hidden = true));
+$("#changePass").addEventListener("click", () => { $("#settings").hidden = true; showSetup("Enter the new passcode."); });
+$("#enablePush").addEventListener("click", enablePush);
+$("#testPush").addEventListener("click", async () => {
+  try { $("#pushMsg").textContent = (await api({ action: "test_push" })).text; } catch (e) { $("#pushMsg").textContent = e.message; }
+});
+$("#makeKeys").addEventListener("click", async () => {
+  try {
+    const k = await api({ action: "vapid_new" });
+    $("#pubKey").value = k.publicKey;
+    $("#privKey").value = k.privateKey;
+    $("#keys").hidden = false;
+  } catch (e) { toast(e.message); }
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { showDate(); load(current); } });
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+showDate();
+if (!API.startsWith("https://")) {
+  showSetup("The function address hasn't been added to index.html yet. Edit index.html in GitHub and paste it on the line that says PASTE_YOUR_FUNCTION_URL_HERE.");
+} else if (!token) {
+  showSetup();
+} else {
+  setView(current);
+}
+</script>
+</body>
+</html>
